@@ -47,9 +47,12 @@ export function initAuth() {
       },
     },
 
-
     account: {
+      // Store OAuth state in MongoDB so any serverless instance can find it.
       storeStateStrategy: "database",
+
+
+      skipStateCookieCheck: true,
     },
 
     session: {
