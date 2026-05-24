@@ -2,8 +2,6 @@ import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import mongoose from "mongoose";
 
-// `auth` is created lazily — called after mongoose connects so that
-// mongoose.connection.getClient() returns a live MongoClient.
 let _auth = null;
 
 export function getAuth() {
@@ -33,8 +31,6 @@ export function initAuth() {
     secret: process.env.BETTER_AUTH_SECRET,
     baseURL: process.env.BETTER_AUTH_URL,
 
-    // Both the frontend and backend origins must be trusted so that
-    // better-auth allows the cross-domain OAuth redirect to succeed.
     trustedOrigins: [
       process.env.CLIENT_URL || "http://localhost:5173",
       process.env.BETTER_AUTH_URL || "http://localhost:5000",
@@ -51,6 +47,11 @@ export function initAuth() {
       },
     },
 
+
+    account: {
+      storeStateStrategy: "database",
+    },
+
     session: {
       cookieCache: {
         enabled: true,
@@ -61,10 +62,6 @@ export function initAuth() {
     },
 
     advanced: {
-      // In production the frontend (dream-drive.vercel.app) and backend
-      // (dream-drive-server.vercel.app) are on different domains, so the
-      // OAuth state cookie must be SameSite=None; Secure, otherwise the
-      // browser drops it during the Google redirect and you get state_mismatch.
       useSecureCookies: isProd,
       crossSubdomainCookies: {
         enabled: isProd,
