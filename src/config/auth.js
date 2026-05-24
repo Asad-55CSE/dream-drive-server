@@ -18,8 +18,6 @@ export function getAuth() {
 export function initAuth() {
   if (_auth) return _auth;
 
-  // mongoose.connection.getClient() returns the underlying MongoClient.
-  // .db() on that client gives us the Db instance the adapter needs.
   const mongoClient = mongoose.connection.getClient();
   if (!mongoClient) {
     throw new Error(
@@ -28,13 +26,15 @@ export function initAuth() {
   }
   const db = mongoClient.db();
 
+  const isProd = process.env.NODE_ENV === "production";
+
   _auth = betterAuth({
-    // Pass both db and client so the adapter can use transactions.
     database: mongodbAdapter(db, { client: mongoClient }),
     secret: process.env.BETTER_AUTH_SECRET,
     baseURL: process.env.BETTER_AUTH_URL,
-    // CLIENT_URL must be trusted so better-auth allows redirecting back to
-    // the React app after the Google OAuth callback.
+
+    // Both the frontend and backend origins must be trusted so that
+    // better-auth allows the cross-domain OAuth redirect to succeed.
     trustedOrigins: [
       process.env.CLIENT_URL || "http://localhost:5173",
       process.env.BETTER_AUTH_URL || "http://localhost:5000",
@@ -61,10 +61,17 @@ export function initAuth() {
     },
 
     advanced: {
-      useSecureCookies: process.env.NODE_ENV === "production",
+      // In production the frontend (dream-drive.vercel.app) and backend
+      // (dream-drive-server.vercel.app) are on different domains, so the
+      // OAuth state cookie must be SameSite=None; Secure, otherwise the
+      // browser drops it during the Google redirect and you get state_mismatch.
+      useSecureCookies: isProd,
+      crossSubdomainCookies: {
+        enabled: isProd,
+      },
       defaultCookieAttributes: {
-        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-        secure: process.env.NODE_ENV === "production",
+        sameSite: isProd ? "none" : "lax",
+        secure: isProd,
         httpOnly: true,
       },
     },
